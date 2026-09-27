@@ -1,0 +1,1586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Last Cartographer: Frontier of the Sky</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,500&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+
+:root{
+  --parchment:#e9dcbb;
+  --parchment-dark:#d8c69a;
+  --ink:#2b1f14;
+  --midnight:#16213a;
+  --midnight-deep:#0c1424;
+  --amber:#c8963f;
+  --amber-bright:#e8b96a;
+  --indigo:#3a3570;
+  --copper:#8b5a2b;
+  --rust:#a4472a;
+  --sage:#6f8065;
+  --panel-bg: rgba(24,20,15,0.86);
+  --panel-border: rgba(200,150,63,0.35);
+  --day-tint: rgba(232,185,106,0.10);
+  --transition-speed: 0.4s;
+  --sf: 'EB Garamond', Georgia, 'Times New Roman', serif;
+  --df: 'Cormorant Garamond', Georgia, serif;
+}
+[data-reduced-motion="true"] * { transition-duration: 0.01s !important; animation-duration: 0.01s !important; }
+[data-contrast="high"]{ --ink:#000; --parchment:#fff6df; --panel-bg: rgba(0,0,0,0.94); --panel-border: rgba(255,214,120,0.8); --amber:#ffcf6b; }
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;height:100%;background:var(--midnight-deep);color:var(--parchment);font-family:var(--sf);overflow:hidden;}
+button{font-family:var(--sf);cursor:pointer;}
+::-webkit-scrollbar{width:8px;}
+::-webkit-scrollbar-thumb{background:var(--copper);border-radius:4px;}
+::-webkit-scrollbar-track{background:rgba(0,0,0,0.3);}
+
+#app{position:relative;width:100vw;height:100vh;overflow:hidden;background:
+  radial-gradient(ellipse at 50% -10%, rgba(200,150,80,0.18), transparent 60%),
+  linear-gradient(180deg,#101a30 0%, #0c1424 55%, #080d18 100%);}
+
+/* ---------- Screens ---------- */
+.screen{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;
+  opacity:1;transition:opacity var(--transition-speed) ease;}
+.screen.hidden{opacity:0;pointer-events:none;}
+
+.title-wrap{text-align:center;max-width:640px;padding:2rem;}
+.title-wrap h1{font-family:var(--df);font-size:3.4rem;font-weight:700;letter-spacing:0.02em;color:var(--amber-bright);
+  margin:0 0 0.2rem 0;text-shadow:0 2px 18px rgba(200,150,63,0.35);}
+.title-wrap .subtitle{font-style:italic;color:var(--parchment-dark);font-size:1.15rem;margin-bottom:2.2rem;letter-spacing:0.03em;}
+.compass-rose{width:120px;height:120px;margin:0 auto 1.6rem auto;opacity:0.85;}
+
+.menu-btn{display:block;width:280px;margin:0.5rem auto;padding:0.85rem 1.4rem;background:linear-gradient(180deg,#2a2114,#1a140c);
+  border:1px solid var(--panel-border);color:var(--amber-bright);font-family:var(--df);font-size:1.15rem;border-radius:3px;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,0.03), 0 3px 10px rgba(0,0,0,0.4);letter-spacing:0.04em;transition:all 0.25s ease;}
+.menu-btn:hover{background:linear-gradient(180deg,#382b18,#241b0f);border-color:var(--amber);transform:translateY(-1px);}
+.menu-btn:active{transform:translateY(0);}
+.menu-btn.secondary{color:var(--parchment-dark);font-size:0.95rem;width:220px;}
+
+.profile-list{width:420px;max-height:280px;overflow-y:auto;margin-bottom:1rem;text-align:left;}
+.profile-card{border:1px solid var(--panel-border);background:rgba(255,255,255,0.02);padding:0.6rem 0.9rem;margin-bottom:0.5rem;
+  border-radius:3px;display:flex;justify-content:space-between;align-items:center;}
+.profile-card:hover{background:rgba(200,150,63,0.08);cursor:pointer;}
+.profile-card .pname{font-family:var(--df);font-size:1.1rem;color:var(--amber-bright);}
+.profile-card .pmeta{font-size:0.8rem;color:var(--parchment-dark);}
+.profile-card .pdel{color:var(--rust);font-size:0.75rem;padding:0.2rem 0.5rem;border:1px solid var(--rust);border-radius:2px;}
+.profile-card .pdel:hover{background:rgba(164,71,42,0.2);}
+
+/* ---------- Game Screen Layout ---------- */
+#game-screen{display:none;flex-direction:row;align-items:stretch;justify-content:flex-start;width:100%;height:100%;}
+#game-screen.active{display:flex;}
+
+.map-area{flex:1;position:relative;overflow:hidden;background:radial-gradient(ellipse at 50% 40%, rgba(58,53,112,0.25), transparent 70%);}
+#hexcanvas{position:absolute;inset:0;width:100%;height:100%;}
+#fxcanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
+
+.weather-overlay{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity 1.2s ease;mix-blend-mode:screen;}
+.weather-overlay.storm{background:linear-gradient(200deg, rgba(60,70,110,0.35), transparent 60%);opacity:1;}
+.weather-overlay.rain{background:repeating-linear-gradient(115deg, rgba(180,200,230,0.06) 0 2px, transparent 2px 14px);opacity:0.8;}
+
+.day-tint-layer{position:absolute;inset:0;pointer-events:none;transition:background 2s ease, opacity 2s ease;}
+.day-tint-layer.dawn{background:linear-gradient(180deg, rgba(232,150,90,0.16), transparent 55%);}
+.day-tint-layer.midday{background:linear-gradient(180deg, rgba(255,244,210,0.10), transparent 60%);}
+.day-tint-layer.twilight{background:linear-gradient(180deg, rgba(90,60,140,0.22), transparent 60%);}
+.day-tint-layer.night{background:linear-gradient(180deg, rgba(5,8,20,0.55), transparent 65%);}
+
+.top-hud{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;padding:0.7rem 1rem;
+  pointer-events:none;z-index:5;}
+.hud-cluster{display:flex;gap:0.55rem;pointer-events:auto;}
+.stat-chip{background:var(--panel-bg);border:1px solid var(--panel-border);border-radius:4px;padding:0.35rem 0.6rem;min-width:92px;
+  box-shadow:0 3px 10px rgba(0,0,0,0.35);}
+.stat-chip .label{font-size:0.62rem;letter-spacing:0.06em;color:var(--parchment-dark);text-transform:uppercase;display:flex;justify-content:space-between;}
+.stat-chip .bar{height:6px;background:rgba(255,255,255,0.08);border-radius:3px;margin-top:3px;overflow:hidden;}
+.stat-chip .bar > div{height:100%;border-radius:3px;transition:width 0.5s ease;}
+.stat-chip.fuel .bar>div{background:linear-gradient(90deg,#c8963f,#e8b96a);}
+.stat-chip.lift .bar>div{background:linear-gradient(90deg,#5c7fb5,#8fb0dd);}
+.stat-chip.hull .bar>div{background:linear-gradient(90deg,#a4472a,#d97b4f);}
+.stat-chip.food .bar>div{background:linear-gradient(90deg,#6f8065,#9fb894);}
+.stat-chip .val{font-size:0.72rem;color:var(--parchment);}
+
+.day-chip{background:var(--panel-bg);border:1px solid var(--panel-border);border-radius:4px;padding:0.4rem 0.75rem;text-align:center;
+  pointer-events:auto;}
+.day-chip .dnum{font-family:var(--df);font-size:1.3rem;color:var(--amber-bright);line-height:1;}
+.day-chip .dphase{font-size:0.62rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--parchment-dark);}
+
+.icon-btn{width:38px;height:38px;border-radius:50%;background:var(--panel-bg);border:1px solid var(--panel-border);
+  color:var(--amber-bright);font-size:1.05rem;display:flex;align-items:center;justify-content:center;pointer-events:auto;
+  box-shadow:0 3px 10px rgba(0,0,0,0.35);transition:all 0.2s ease;}
+.icon-btn:hover{border-color:var(--amber);background:rgba(200,150,63,0.15);}
+
+.side-panel{width:330px;background:linear-gradient(180deg, rgba(20,16,11,0.94), rgba(14,11,8,0.97));
+  border-left:1px solid var(--panel-border);display:flex;flex-direction:column;padding:0.9rem;overflow-y:auto;z-index:4;}
+.side-panel h2{font-family:var(--df);font-size:1.25rem;color:var(--amber-bright);margin:0 0 0.6rem 0;letter-spacing:0.03em;
+  border-bottom:1px solid var(--panel-border);padding-bottom:0.4rem;}
+
+.crew-card{background:rgba(255,255,255,0.025);border:1px solid var(--panel-border);border-radius:4px;padding:0.55rem 0.65rem;margin-bottom:0.55rem;}
+.crew-card.dead{opacity:0.4;filter:grayscale(1);}
+.crew-card .ctop{display:flex;justify-content:space-between;align-items:baseline;}
+.crew-card .cname{font-family:var(--df);font-size:1.05rem;color:var(--amber-bright);}
+.crew-card .crole{font-size:0.68rem;color:var(--parchment-dark);letter-spacing:0.03em;}
+.crew-card .ctrait{font-size:0.72rem;color:var(--sage);font-style:italic;margin:0.15rem 0 0.35rem 0;}
+.mini-bar-row{display:flex;align-items:center;gap:0.4rem;margin-top:2px;}
+.mini-bar-row .mlabel{font-size:0.6rem;width:44px;color:var(--parchment-dark);text-transform:uppercase;letter-spacing:0.04em;}
+.mini-bar{flex:1;height:5px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;}
+.mini-bar>div{height:100%;}
+.mini-bar.morale>div{background:#e8b96a;}
+.mini-bar.fatigue>div{background:#8fb0dd;}
+.mini-bar.hunger>div{background:#9fb894;}
+
+.bottom-bar{position:absolute;bottom:0;left:0;right:330px;display:flex;justify-content:center;gap:0.6rem;padding:0.8rem;z-index:5;}
+.bottom-bar button{background:var(--panel-bg);border:1px solid var(--panel-border);color:var(--parchment);border-radius:4px;
+  padding:0.5rem 0.95rem;font-size:0.85rem;letter-spacing:0.02em;transition:all 0.2s ease;box-shadow:0 3px 10px rgba(0,0,0,0.35);}
+.bottom-bar button:hover{border-color:var(--amber);color:var(--amber-bright);}
+
+.log-feed{position:absolute;left:0;bottom:0;width:calc(100% - 330px);max-height:140px;overflow-y:auto;padding:0.4rem 1rem 3.2rem 1rem;
+  font-size:0.78rem;color:var(--parchment-dark);z-index:3;pointer-events:none;}
+.log-feed .entry{background:rgba(10,8,5,0.55);border-left:2px solid var(--copper);padding:0.2rem 0.5rem;margin-bottom:0.2rem;
+  border-radius:0 3px 3px 0;max-width:520px;}
+
+/* ---------- Modals ---------- */
+.modal-backdrop{position:absolute;inset:0;background:rgba(5,4,2,0.72);display:flex;align-items:center;justify-content:center;
+  z-index:20;opacity:0;pointer-events:none;transition:opacity var(--transition-speed) ease;}
+.modal-backdrop.show{opacity:1;pointer-events:auto;}
+.modal{background:linear-gradient(180deg,#efe2bf,#e3d3a6);color:var(--ink);border-radius:4px;max-width:560px;width:92%;
+  max-height:84vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(139,90,43,0.4);
+  transform:translateY(10px) scale(0.98);transition:transform var(--transition-speed) ease;position:relative;}
+.modal-backdrop.show .modal{transform:translateY(0) scale(1);}
+.modal-header{padding:1.1rem 1.4rem 0.5rem 1.4rem;border-bottom:1px solid rgba(139,90,43,0.3);}
+.modal-header h3{font-family:var(--df);font-size:1.6rem;margin:0;color:var(--copper);}
+.modal-header .mtag{font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:#7a6a4a;}
+.modal-body{padding:1.1rem 1.4rem;font-size:1.02rem;line-height:1.55;}
+.modal-body p{margin:0 0 0.8rem 0;}
+.modal-choices{display:flex;flex-direction:column;gap:0.5rem;padding:0 1.4rem 1.4rem 1.4rem;}
+.choice-btn{text-align:left;background:rgba(139,90,43,0.08);border:1px solid rgba(139,90,43,0.4);padding:0.65rem 0.9rem;
+  border-radius:3px;color:var(--ink);font-size:0.95rem;transition:all 0.2s ease;}
+.choice-btn:hover{background:rgba(139,90,43,0.18);border-color:var(--copper);transform:translateX(2px);}
+.choice-btn .csk{display:block;font-size:0.72rem;color:#7a5a2a;margin-top:2px;font-style:italic;}
+.modal-close-row{padding:0 1.4rem 1.3rem 1.4rem;text-align:right;}
+.wax-btn{background:var(--rust);color:#f4e6c8;border:none;padding:0.5rem 1.1rem;border-radius:50px;font-size:0.85rem;letter-spacing:0.03em;
+  box-shadow:0 3px 8px rgba(0,0,0,0.3);}
+.wax-btn:hover{filter:brightness(1.1);}
+
+/* Wax-seal toggle */
+.wax-toggle{display:inline-flex;align-items:center;gap:0.5rem;cursor:pointer;user-select:none;}
+.wax-seal{width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 35% 30%, #c25a3a, #7c2f1a);
+  box-shadow:inset 0 0 4px rgba(0,0,0,0.5), 0 2px 3px rgba(0,0,0,0.3);position:relative;flex-shrink:0;transition:transform 0.2s ease;}
+.wax-seal.off{background:radial-gradient(circle at 35% 30%, #6a6a6a,#3a3a3a);}
+.wax-seal::after{content:'';position:absolute;inset:5px;border-radius:50%;border:1px solid rgba(255,255,255,0.2);}
+.wax-toggle:active .wax-seal{transform:scale(0.9);}
+
+/* Codex */
+.codex-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;padding:0 1.4rem 1.3rem 1.4rem;}
+.codex-entry{border:1px solid rgba(139,90,43,0.35);border-radius:3px;padding:0.55rem 0.7rem;background:rgba(139,90,43,0.05);}
+.codex-entry.locked{opacity:0.45;filter:grayscale(0.6);}
+.codex-entry .cename{font-family:var(--df);font-size:1.05rem;color:var(--copper);}
+.codex-entry .cecat{font-size:0.65rem;text-transform:uppercase;letter-spacing:0.05em;color:#8a7a5a;}
+.codex-entry .cedesc{font-size:0.78rem;margin-top:0.25rem;color:#4a3a24;}
+.codex-entry .ceperk{font-size:0.72rem;margin-top:0.3rem;color:var(--sage);font-style:italic;}
+
+/* Upgrade tree */
+.upgrade-list{display:flex;flex-direction:column;gap:0.55rem;padding:0 1.4rem 1.3rem 1.4rem;}
+.upgrade-row{display:flex;justify-content:space-between;align-items:center;border:1px solid rgba(139,90,43,0.35);
+  border-radius:3px;padding:0.6rem 0.8rem;background:rgba(139,90,43,0.05);}
+.upgrade-row.bought{background:rgba(111,128,101,0.15);border-color:var(--sage);}
+.upgrade-info .uname{font-family:var(--df);font-size:1.05rem;color:var(--copper);}
+.upgrade-info .udesc{font-size:0.78rem;color:#4a3a24;max-width:320px;}
+.buy-btn{background:var(--copper);color:#f4e6c8;border:none;padding:0.4rem 0.8rem;border-radius:3px;font-size:0.82rem;white-space:nowrap;}
+.buy-btn:disabled{background:#9a8a6a;cursor:not-allowed;}
+
+/* Settings */
+.settings-row{display:flex;justify-content:space-between;align-items:center;padding:0.55rem 0;border-bottom:1px solid rgba(139,90,43,0.2);}
+.settings-row label{font-size:0.9rem;}
+.settings-row input[type=range]{width:150px;accent-color:var(--copper);}
+
+/* Ledger */
+.ledger-stats{display:grid;grid-template-columns:1fr 1fr;gap:0.7rem;padding:0 1.4rem 1rem 1.4rem;}
+.ledger-stat{border:1px solid rgba(139,90,43,0.3);border-radius:3px;padding:0.6rem 0.8rem;text-align:center;}
+.ledger-stat .lval{font-family:var(--df);font-size:1.7rem;color:var(--copper);}
+.ledger-stat .llabel{font-size:0.68rem;text-transform:uppercase;letter-spacing:0.05em;color:#7a6a4a;}
+#ledger-chart{display:block;margin:0 1.4rem 1rem 1.4rem;width:calc(100% - 2.8rem);background:rgba(139,90,43,0.05);border-radius:3px;}
+
+/* Tooltip */
+.tooltip{position:absolute;background:rgba(20,16,10,0.95);border:1px solid var(--panel-border);color:var(--parchment);
+  padding:0.5rem 0.7rem;border-radius:4px;font-size:0.78rem;max-width:220px;pointer-events:none;z-index:30;opacity:0;
+  transition:opacity 0.15s ease;box-shadow:0 6px 16px rgba(0,0,0,0.4);}
+.tooltip.show{opacity:1;}
+.tooltip .ttitle{font-family:var(--df);color:var(--amber-bright);font-size:0.95rem;margin-bottom:0.15rem;}
+
+.dust-mote{position:absolute;border-radius:50%;background:rgba(232,185,106,0.5);pointer-events:none;}
+
+@media (max-width: 880px){
+  .side-panel{width:250px;padding:0.6rem;}
+  .bottom-bar{right:250px;}
+  .log-feed{width:calc(100% - 250px);}
+  .title-wrap h1{font-size:2.3rem;}
+}
+</style>
+</head>
+<body data-reduced-motion="false" data-contrast="normal">
+<div id="app">
+
+  <!-- ============ TITLE SCREEN ============ -->
+  <div class="screen" id="screen-title">
+    <div class="title-wrap">
+      <svg class="compass-rose" viewBox="0 0 100 100"><g fill="none" stroke="#c8963f" stroke-width="1"><circle cx="50" cy="50" r="44"/><circle cx="50" cy="50" r="36"/></g><g fill="#e8b96a"><polygon points="50,10 56,46 50,50 44,46"/><polygon points="50,90 56,54 50,50 44,54" opacity="0.5"/><polygon points="10,50 46,44 50,50 46,56" opacity="0.7"/><polygon points="90,50 54,44 50,50 54,56" opacity="0.7"/></g><circle cx="50" cy="50" r="3" fill="#e8b96a"/></svg>
+      <h1>The Last Cartographer</h1>
+      <div class="subtitle">Frontier of the Sky</div>
+      <button class="menu-btn" id="btn-new-expedition">Chart a New Expedition</button>
+      <button class="menu-btn" id="btn-continue">Continue Voyage</button>
+      <button class="menu-btn secondary" id="btn-codex-open">Knowledge Archive</button>
+      <button class="menu-btn secondary" id="btn-settings-open">Settings</button>
+    </div>
+  </div>
+
+  <!-- ============ PROFILE / LOAD SCREEN ============ -->
+  <div class="screen hidden" id="screen-profiles">
+    <div class="title-wrap">
+      <h1 style="font-size:2.1rem;">Expedition Logs</h1>
+      <div class="profile-list" id="profile-list"></div>
+      <button class="menu-btn secondary" id="btn-back-title">Back</button>
+    </div>
+  </div>
+
+  <!-- ============ GAME SCREEN ============ -->
+  <div class="screen" id="screen-game" style="display:none;">
+    <div id="game-screen">
+      <div class="map-area">
+        <canvas id="hexcanvas"></canvas>
+        <canvas id="fxcanvas"></canvas>
+        <div class="day-tint-layer" id="day-tint"></div>
+        <div class="weather-overlay" id="weather-overlay"></div>
+
+        <div class="top-hud">
+          <div class="hud-cluster">
+            <div class="stat-chip fuel"><div class="label"><span>Fuel</span><span class="val" id="hud-fuel-val"></span></div><div class="bar"><div id="hud-fuel-bar"></div></div></div>
+            <div class="stat-chip lift"><div class="label"><span>Lift Gas</span><span class="val" id="hud-lift-val"></span></div><div class="bar"><div id="hud-lift-bar"></div></div></div>
+            <div class="stat-chip hull"><div class="label"><span>Hull</span><span class="val" id="hud-hull-val"></span></div><div class="bar"><div id="hud-hull-bar"></div></div></div>
+            <div class="stat-chip food"><div class="label"><span>Food</span><span class="val" id="hud-food-val"></span></div><div class="bar"><div id="hud-food-bar"></div></div></div>
+          </div>
+          <div class="hud-cluster">
+            <div class="day-chip"><div class="dnum" id="hud-day">1</div><div class="dphase" id="hud-phase">Dawn</div></div>
+            <button class="icon-btn" id="btn-settings-game" title="Settings">⚙</button>
+            <button class="icon-btn" id="btn-menu-game" title="Menu">☰</button>
+          </div>
+        </div>
+
+        <div class="log-feed" id="log-feed"></div>
+
+        <div class="bottom-bar">
+          <button id="btn-open-codex">📜 Archive</button>
+          <button id="btn-open-upgrades">⚒ Airship</button>
+          <button id="btn-rest">🛌 Rest a Day</button>
+          <button id="btn-retreat">🏳 Return to Airbase</button>
+        </div>
+      </div>
+
+      <div class="side-panel">
+        <h2>Crew</h2>
+        <div id="crew-list"></div>
+        <h2 style="margin-top:0.4rem;">Salvage</h2>
+        <div class="stat-chip" style="width:100%;margin-bottom:0.6rem;"><div class="label"><span>Currency</span><span class="val" id="hud-salvage-val">0</span></div></div>
+        <h2>Ship Log</h2>
+        <div id="side-log" style="font-size:0.75rem;color:var(--parchment-dark);line-height:1.5;flex:1;overflow-y:auto;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODALS ============ -->
+  <div class="modal-backdrop" id="modal-event">
+    <div class="modal">
+      <div class="modal-header"><div class="mtag" id="event-tag">Ruined Sky-Tower</div><h3 id="event-title">Event Title</h3></div>
+      <div class="modal-body" id="event-body"></div>
+      <div class="modal-choices" id="event-choices"></div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="modal-codex">
+    <div class="modal">
+      <div class="modal-header"><div class="mtag">Knowledge Archive</div><h3>Codex</h3></div>
+      <div class="codex-grid" id="codex-grid"></div>
+      <div class="modal-close-row"><button class="wax-btn" data-close="modal-codex">Close</button></div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="modal-upgrades">
+    <div class="modal">
+      <div class="modal-header"><div class="mtag">Airship</div><h3>Modular Upgrades</h3></div>
+      <div class="upgrade-list" id="upgrade-list"></div>
+      <div class="modal-close-row"><button class="wax-btn" data-close="modal-upgrades">Close</button></div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="modal-settings">
+    <div class="modal">
+      <div class="modal-header"><div class="mtag">Preferences</div><h3>Settings</h3></div>
+      <div class="modal-body">
+        <div class="settings-row"><label>Master Volume</label><input type="range" id="vol-master" min="0" max="100" value="70"></div>
+        <div class="settings-row"><label>Ambient Wind</label><input type="range" id="vol-wind" min="0" max="100" value="55"></div>
+        <div class="settings-row"><label>Music Box</label><input type="range" id="vol-music" min="0" max="100" value="60"></div>
+        <div class="settings-row"><label>Interface SFX</label><input type="range" id="vol-sfx" min="0" max="100" value="70"></div>
+        <div class="settings-row"><label>High Contrast Text</label><div class="wax-toggle" id="toggle-contrast"><div class="wax-seal off"></div></div></div>
+        <div class="settings-row"><label>Reduced Motion</label><div class="wax-toggle" id="toggle-motion"><div class="wax-seal off"></div></div></div>
+        <div class="settings-row"><label>Text Speed</label><input type="range" id="text-speed" min="1" max="5" value="3"></div>
+      </div>
+      <div class="modal-close-row"><button class="wax-btn" data-close="modal-settings">Close</button></div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="modal-crisis">
+    <div class="modal">
+      <div class="modal-header"><div class="mtag" style="color:#a4472a;">Crew Crisis</div><h3 id="crisis-title"></h3></div>
+      <div class="modal-body" id="crisis-body"></div>
+      <div class="modal-choices" id="crisis-choices"></div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="modal-ledger">
+    <div class="modal">
+      <div class="modal-header"><div class="mtag" id="ledger-tag">Expedition Concluded</div><h3 id="ledger-title">End of Run Ledger</h3></div>
+      <div class="ledger-stats" id="ledger-stats"></div>
+      <canvas id="ledger-chart" height="120"></canvas>
+      <div class="modal-close-row"><button class="wax-btn" id="btn-ledger-continue">Return to Title</button></div>
+    </div>
+  </div>
+
+  <div class="tooltip" id="tooltip"></div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* =====================================================================
+   UTILITIES: seeded RNG, storage helpers
+===================================================================== */
+function mulberry32(seed){
+  return function(){
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function randInt(rng, min, max){ return Math.floor(rng()*(max-min+1))+min; }
+function pick(rng, arr){ return arr[Math.floor(rng()*arr.length)]; }
+function weightedPick(rng, entries){ // entries: [ [item, weight], ... ]
+  const total = entries.reduce((s,e)=>s+e[1],0);
+  let r = rng()*total;
+  for(const [item,w] of entries){ if(r<w) return item; r-=w; }
+  return entries[entries.length-1][0];
+}
+function clamp(v,min,max){ return Math.max(min,Math.min(max,v)); }
+function ls_get(key, fallback){ try{ const v = localStorage.getItem(key); return v? JSON.parse(v): fallback; }catch(e){ return fallback; } }
+function ls_set(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){} }
+
+const SAVE_KEY = "cartographer_saves_v1";
+const CODEX_KEY = "cartographer_codex_v1";
+const SETTINGS_KEY = "cartographer_settings_v1";
+
+/* =====================================================================
+   DATA: crew traits, codex entries, events, upgrades
+===================================================================== */
+const TRAITS = [
+  {id:"claustrophobic", name:"Claustrophobic", desc:"Loses morale faster during storms.", moraleStormMod:-3},
+  {id:"optimist", name:"Optimist", desc:"Recovers morale faster at rest.", restMoraleMod:+4},
+  {id:"insomniac", name:"Insomniac", desc:"Fatigue rises quicker, but works well by lamplight.", fatigueMod:+2, nightSkillMod:+1},
+  {id:"master_mechanic", name:"Master Mechanic", desc:"Reduces hull damage chance on rough landings.", hullDamageMod:-0.08},
+  {id:"superstitious", name:"Superstitious", desc:"Uneasy near Anomalies, steady near ruins.", anomalyMoraleMod:-3, ruinMoraleMod:+2},
+  {id:"stoic", name:"Stoic", desc:"Rarely rattled; morale swings are muted.", moraleDampen:0.6},
+  {id:"glutton", name:"Glutton", desc:"Consumes more food but resists hunger longer.", hungerRateMod:-2, foodConsumeMod:+1},
+  {id:"hawkeyed", name:"Hawkeyed", desc:"Spots distant landmarks; reveals wider fog radius.", visionMod:+1}
+];
+
+const CREW_TEMPLATES = [
+  {role:"Navigator", skill:"nav", names:["Isolde Vane","Corin Marrow","Thessaly Rook","Baldric Fenn"]},
+  {role:"Engineer", skill:"eng", names:["Odger Hale","Wren Castellan","Ambrose Tilt","Perpetua Gray"]},
+  {role:"Botanist", skill:"bot", names:["Linnet Ashworth","Sorrel Quill","Marisol Dunmore","Fennick Rye"]},
+  {role:"Quartermaster", skill:"soc", names:["Delphine Ostro","Callum Brasswell","Ines Farrow","TalwynOst"]}
+];
+
+const CODEX_ENTRIES = [
+  {id:"c_lanternfish", name:"Sky-Lanternfish", cat:"fauna", desc:"A bioluminescent creature drifting in thermal columns, said to guide lost airships home.", perk:"+4 starting Lift Gas", effect:{liftGasMax:4}},
+  {id:"c_sundial", name:"The Drowned Sundial", cat:"artifact", desc:"A bronze instrument that once measured the sun-hours of a civilization now fallen into cloud.", perk:"+1 Navigator skill at start", effect:{navSkill:1}},
+  {id:"c_choir", name:"The Choir Engine", cat:"lore", desc:"Fragmented journals describe a device that sang the winds into stillness.", perk:"-1 storm severity on average", effect:{stormSeverity:-1}},
+  {id:"c_mosaic", name:"Shattered Mosaic of the First Fleet", cat:"artifact", desc:"Tiles depicting the original cartographer fleet, scattered across a hundred ruins.", perk:"+3 starting Salvage", effect:{salvage:3}},
+  {id:"c_moth", name:"Cindermoth Swarms", cat:"fauna", desc:"Moths that feed on burner-heat, often found nesting near forgotten engine rooms.", perk:"+1 Engineer skill at start", effect:{engSkill:1}},
+  {id:"c_orchard", name:"The Floating Orchard", cat:"lore", desc:"Accounts of an entire orchard kept aloft by root-bound gas bladders.", perk:"+4 starting Food", effect:{foodMax:4}},
+  {id:"c_ledger", name:"Quartermaster's Ledger", cat:"artifact", desc:"A waterlogged trade ledger listing routes to atolls no living chart records.", perk:"+1 Quartermaster skill at start", effect:{socSkill:1}},
+  {id:"c_spore", name:"Driftspore Colonies", cat:"fauna", desc:"Airborne spores that cling to hull plating, oddly reinforcing weak seams.", perk:"+5 starting Hull integrity", effect:{hullMax:5}},
+  {id:"c_map", name:"The Uncharted Star-Map", cat:"lore", desc:"A map that charts not land, but the migration of storms across seasons.", perk:"+1 Botanist skill at start", effect:{botSkill:1}},
+  {id:"c_anchor", name:"The Sunken Anchor-Spire", cat:"artifact", desc:"An anchor the size of a tower, rooted in cloud-stone that never touched ground.", perk:"+6 starting Fuel", effect:{fuelMax:6}}
+];
+
+// Events keyed by tile type; each has multi-stage support via 'next'
+const EVENTS = {
+  tower: [
+    {
+      id:"tw_archive", title:"The Sunken Archive", tag:"Ruined Sky-Tower",
+      text:"Wind hums through a collapsed spire of glass and copper. Shelves of waterlogged scrolls cling to the walls, and something glints deep within a fractured alcove.",
+      choices:[
+        {label:"Send the Navigator to chart the inner chambers.", skill:"nav", dc:5,
+          success:{text:"The Navigator threads the collapsed stairwells with practiced ease, mapping a hidden chamber and recovering an intact scroll.", effects:{salvage:3, codex:"c_sundial", moraleAll:2}},
+          fail:{text:"A stairwell gives way. The Navigator scrambles back, shaken but unhurt, empty-handed.", effects:{moraleAll:-3}}},
+        {label:"Pry open the fractured alcove by hand.", skill:"eng", dc:6,
+          success:{text:"The alcove yields a corroded instrument, still faintly warm. The Engineer pockets it with a grin.", effects:{salvage:2, hull:3}},
+          fail:{text:"The alcove crumbles to dust the moment it's touched. A sharp edge draws blood.", effects:{moraleAll:-2, hull:-2}}},
+        {label:"Leave the archive undisturbed and chart the exterior only.", skill:null,
+          success:{text:"You note the tower's position and move on, resources unspent.", effects:{}}, }
+      ]
+    },
+    {
+      id:"tw_beacon", title:"The Dead Beacon", tag:"Ruined Sky-Tower",
+      text:"A rusted signal-beacon still turns slowly atop the tower, powered by some failing internal mechanism. It could be salvaged, or left to warn other travelers.",
+      choices:[
+        {label:"Disassemble the beacon for parts.", skill:"eng", dc:5,
+          success:{text:"The Engineer extracts a serviceable gas regulator and a handful of brass fittings.", effects:{salvage:2, fuel:4}},
+          fail:{text:"The mechanism sparks violently and seizes. Nothing usable remains.", effects:{moraleAll:-2}}},
+        {label:"Leave it turning, and log its position for future fleets.", skill:null,
+          success:{text:"The crew feels a quiet pride in leaving the beacon intact.", effects:{moraleAll:3}}}
+      ]
+    },
+    {
+      id:"tw_vault", title:"The Cartographer's Vault", tag:"Ruined Sky-Tower",
+      text:"A sealed door bears the sigil of the fallen fleet. Something ancient guards it — three locks, each keyed differently.",
+      stage2:true,
+      choices:[
+        {label:"Study the lock mechanisms carefully.", skill:"nav", dc:6,
+          success:{text:"The pattern becomes clear: it's a star-chart. You align the tumblers to the correct constellation.", next:"tw_vault_open"},
+          fail:{text:"The tumblers jam. One lock is ruined, but two remain.", effects:{moraleAll:-2}, next:"tw_vault_open"}}
+      ]
+    },
+    {
+      id:"tw_vault_open", title:"The Vault Opens", tag:"Ruined Sky-Tower",
+      text:"With a groan of ancient gears, the vault door swings inward, revealing a chamber untouched for a century.",
+      choices:[
+        {label:"Take the sealed cartography kit within.", skill:null,
+          success:{text:"Inside: an intact cartography kit, still smelling of cedar and ink. Priceless.", effects:{salvage:5, codex:"c_mosaic", moraleAll:4}}},
+        {label:"Take only what fits in one satchel, and leave the rest for others.", skill:null,
+          success:{text:"You take a single instrument and reseal the vault out of respect for the dead.", effects:{salvage:2, moraleAll:2}}}
+      ]
+    }
+  ],
+  atoll: [
+    {
+      id:"at_market", title:"Trading Atoll", tag:"Trading Atoll",
+      text:"A cluster of moored houseboats and rope-bridges forms a small floating market. Traders eye your ship with cautious interest.",
+      choices:[
+        {label:"Trade salvage for fuel and lift gas.", skill:"soc", dc:4,
+          success:{text:"The Quartermaster haggles well; you leave with full tanks and coin to spare.", effects:{salvageDelta:-3, fuel:8, liftGas:6}},
+          fail:{text:"The traders sense desperation and charge steep prices.", effects:{salvageDelta:-4, fuel:3, liftGas:2}}},
+        {label:"Trade for fresh food stores instead.", skill:"soc", dc:3,
+          success:{text:"Crates of dried fruit and smoked fish are loaded aboard.", effects:{salvageDelta:-2, food:6}},
+          fail:{text:"You overpay for a modest haul.", effects:{salvageDelta:-3, food:3}}},
+        {label:"Simply rest at the atoll and let the crew wander the market.", skill:null,
+          success:{text:"The crew enjoys solid ground underfoot for an hour. Spirits lift.", effects:{moraleAll:5}}}
+      ]
+    },
+    {
+      id:"at_rumor", title:"Whispers at the Dock", tag:"Trading Atoll",
+      text:"An old dockhand offers a rumor of a nearby anomaly, for a price.",
+      choices:[
+        {label:"Pay for the rumor.", skill:null,
+          success:{text:"The dockhand sketches a rough bearing on a scrap of parchment. Useful, perhaps.", effects:{salvageDelta:-1, reveal:2}}},
+        {label:"Decline and move on.", skill:null,
+          success:{text:"You keep your salvage and your skepticism intact.", effects:{}}}
+      ]
+    },
+    {
+      id:"at_stowaway", title:"The Stowaway's Plea", tag:"Trading Atoll",
+      text:"A gaunt figure begs passage aboard, claiming knowledge of safe thermal routes.",
+      choices:[
+        {label:"Take them aboard, at the cost of rations.", skill:"soc", dc:4,
+          success:{text:"The stowaway proves honest, marking several safe thermals on your chart before departing at the next port.", effects:{foodDelta:-3, fuel:5}},
+          fail:{text:"The stowaway vanishes with a satchel of supplies overnight.", effects:{foodDelta:-3, salvageDelta:-2, moraleAll:-2}}},
+        {label:"Turn them away.", skill:null,
+          success:{text:"The crew feels a pang of guilt, but supplies remain untouched.", effects:{moraleAll:-1}}}
+      ]
+    }
+  ],
+  anomaly: [
+    {
+      id:"an_mirror", title:"The Mirror-Cloud", tag:"Mysterious Anomaly",
+      text:"A cloud bank ahead reflects the ship perfectly, down to the crew's faces — except every reflection is looking directly at you.",
+      choices:[
+        {label:"Sail through and observe closely.", skill:"bot", dc:6,
+          success:{text:"The Botanist identifies a rare atmospheric phenomenon: ice-crystal alignment. A fascinating, harmless discovery.", effects:{codex:"c_moth", moraleAll:2}},
+          fail:{text:"The reflections seem to move a half-second out of sync. The crew is deeply unsettled.", effects:{moraleAll:-6}}},
+        {label:"Steer wide around it.", skill:"nav", dc:4,
+          success:{text:"You skirt the phenomenon entirely, losing little time.", effects:{fuelDelta:-2}},
+          fail:{text:"The detour costs precious fuel against a stiffening headwind.", effects:{fuelDelta:-5}}}
+      ]
+    },
+    {
+      id:"an_silence", title:"The Silent Hour", tag:"Mysterious Anomaly",
+      text:"For exactly one hour, all sound vanishes — engines, wind, even voices. Then it returns as if nothing happened.",
+      choices:[
+        {label:"Use the silence to make careful repairs.", skill:"eng", dc:5,
+          success:{text:"Without the usual din, the Engineer finds and fixes a hairline fracture in the hull.", effects:{hull:8}},
+          fail:{text:"Working in eerie silence unnerves everyone; little gets done.", effects:{moraleAll:-2}}},
+        {label:"Gather the crew and wait it out together.", skill:null,
+          success:{text:"The shared unease bonds the crew, oddly enough.", effects:{moraleAll:4}}}
+      ]
+    },
+    {
+      id:"an_garden", title:"The Inverted Garden", tag:"Mysterious Anomaly",
+      text:"A garden of pale, upside-down trees grows from a floating stone, roots reaching skyward as if drinking the clouds.",
+      choices:[
+        {label:"Collect samples for study.", skill:"bot", dc:5,
+          success:{text:"The Botanist catalogs an entirely new species, its roots capable of drawing moisture from thin air.", effects:{codex:"c_map", food:3}},
+          fail:{text:"The samples wilt and blacken within minutes of collection. A wasted stop.", effects:{moraleAll:-2}}},
+        {label:"Leave it be; some things aren't meant to be disturbed.", skill:null,
+          success:{text:"The crew feels an odd respect for the place, and for each other.", effects:{moraleAll:3}}}
+      ]
+    },
+    {
+      id:"an_voice", title:"A Voice on the Wind", tag:"Mysterious Anomaly",
+      text:"Something calls your name — or a name close enough to it — from within a dense fog bank ahead.",
+      stage2:true,
+      choices:[
+        {label:"Answer the call.", skill:"soc", dc:6,
+          success:{text:"The voice resolves into wind through a hollow spire — nothing more. Or so you tell yourself.", next:"an_voice_2"},
+          fail:{text:"No answer comes back, only a colder silence.", effects:{moraleAll:-4}, next:"an_voice_2"}}
+      ]
+    },
+    {
+      id:"an_voice_2", title:"What Remains", tag:"Mysterious Anomaly",
+      text:"Within the fog, you find the skeletal remains of another airship, its cartography desk still intact.",
+      choices:[
+        {label:"Recover the fallen cartographer's charts.", skill:null,
+          success:{text:"Their charts fill gaps in your own maps and reveal the fate of a fleet lost long ago.", effects:{codex:"c_choir", salvage:3, moraleAll:-2}}},
+        {label:"Offer a moment of silence and depart empty-handed.", skill:null,
+          success:{text:"The crew feels the weight of the sky's long memory, and grows closer for it.", effects:{moraleAll:5}}}
+      ]
+    }
+  ],
+  home: []
+};
+
+// Crisis events triggered by low morale on a specific crew member
+const CRISES = [
+  {id:"cr_quit", title:"Threatening to Turn Back", text:"{name} corners you at the helm. \"I can't keep going like this. Give me a reason, or point us home.\"",
+    choices:[
+      {label:"Promise extra rations from the stores.", effects:{foodDelta:-3, moraleTarget:15}},
+      {label:"Give them a firm, honest talk about the mission.", skill:"soc", dc:5,
+        success:{effects:{moraleTarget:12}}, fail:{effects:{moraleTarget:4, moraleAll:-2}}},
+      {label:"Let them sulk; there's no time for coddling.", effects:{moraleTarget:-5, fatigueTarget:-5}}
+    ]},
+  {id:"cr_fight", title:"A Fight Breaks Out", text:"Raised voices below deck — {name} has come to blows with another crew member over rationing.",
+    choices:[
+      {label:"Step in and separate them personally.", skill:"soc", dc:6,
+        success:{effects:{moraleTarget:8, moraleAll:1}}, fail:{effects:{moraleTarget:-3, moraleAll:-3}}},
+      {label:"Let the Quartermaster handle it.", effects:{moraleTarget:3}}
+    ]},
+  {id:"cr_despair", title:"A Quiet Despair", text:"{name} has stopped speaking at meals. You find them staring out at the clouds, tools idle in their lap.",
+    choices:[
+      {label:"Sit with them and listen.", effects:{moraleTarget:10, fatigueTarget:-3}},
+      {label:"Assign them lighter duties for a few days.", effects:{moraleTarget:6, fatigueTarget:8}}
+    ]}
+];
+
+const UPGRADES = [
+  {id:"cargo", name:"Expanded Cargo Hold", desc:"Increases maximum food and lift gas capacity.", cost:5, apply:(s)=>{s.resources.foodMax+=5; s.resources.liftGasMax+=5;}},
+  {id:"bow", name:"Reinforced Bow", desc:"Reduces the chance of hull damage from rough weather.", cost:6, apply:(s)=>{s.ship.hullDamageReduction+=0.15;}},
+  {id:"greenhouse", name:"Greenhouse Deck", desc:"Produces a small amount of food automatically each day.", cost:7, apply:(s)=>{s.ship.foodPerDay+=2;}},
+  {id:"engines", name:"Tuned Engines", desc:"Reduces fuel cost of every move.", cost:6, apply:(s)=>{s.ship.fuelEfficiency+=0.2;}},
+  {id:"sails", name:"Storm Sails", desc:"Reduces severity of storm weather encountered.", cost:8, apply:(s)=>{s.ship.stormResist+=1;}}
+];
+
+/* =====================================================================
+   AUDIO ENGINE
+===================================================================== */
+const Audio_ = (function(){
+  let ctx=null, master, windGain, musicGain, sfxGain, windSource, windFilter, musicTimer=null;
+  let peril=false;
+  function ensureCtx(){
+    if(ctx) return;
+    ctx = new (window.AudioContext||window.webkitAudioContext)();
+    master = ctx.createGain(); master.gain.value=0.7; master.connect(ctx.destination);
+    windGain = ctx.createGain(); windGain.gain.value=0.55; windGain.connect(master);
+    musicGain = ctx.createGain(); musicGain.gain.value=0.6; musicGain.connect(master);
+    sfxGain = ctx.createGain(); sfxGain.gain.value=0.7; sfxGain.connect(master);
+    startWind();
+    startMusic();
+  }
+  function noiseBuffer(){
+    const bufferSize = 2*ctx.sampleRate;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for(let i=0;i<bufferSize;i++) data[i] = Math.random()*2-1;
+    return buffer;
+  }
+  function startWind(){
+    windSource = ctx.createBufferSource();
+    windSource.buffer = noiseBuffer();
+    windSource.loop = true;
+    windFilter = ctx.createBiquadFilter();
+    windFilter.type = "bandpass";
+    windFilter.frequency.value = 420;
+    windFilter.Q.value = 0.7;
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 0.07;
+    const lfoGain = ctx.createGain(); lfoGain.gain.value = 180;
+    lfo.connect(lfoGain); lfoGain.connect(windFilter.frequency);
+    lfo.start();
+    windSource.connect(windFilter); windFilter.connect(windGain);
+    windSource.start();
+  }
+  const scaleMajor = [0,2,4,7,9,12,16];
+  const scaleMinor = [0,2,3,7,8,12,15];
+  function startMusic(){
+    if(musicTimer) clearInterval(musicTimer);
+    musicTimer = setInterval(()=>{
+      if(!ctx) return;
+      const scale = peril? scaleMinor: scaleMajor;
+      const base = peril? 220: 261.63;
+      const semis = pick_(scale);
+      const freq = base * Math.pow(2, semis/12);
+      const o = ctx.createOscillator();
+      o.type = "triangle"; o.frequency.value = freq;
+      const g = ctx.createGain(); g.gain.value = 0;
+      o.connect(g); g.connect(musicGain);
+      const t = ctx.currentTime;
+      g.gain.linearRampToValueAtTime(0.18, t+0.05);
+      g.gain.exponentialRampToValueAtTime(0.0001, t+1.4);
+      o.start(t); o.stop(t+1.5);
+    }, peril? 1400: 1900);
+  }
+  function pick_(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+  function setPeril(p){ if(p!==peril){ peril=p; startMusic(); } }
+  function sfx(kind){
+    ensureCtx();
+    const t = ctx.currentTime;
+    if(kind==="drawer"){
+      const o = ctx.createOscillator(); o.type="sawtooth"; o.frequency.setValueAtTime(90,t);
+      o.frequency.exponentialRampToValueAtTime(60,t+0.3);
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.001,t); g.gain.linearRampToValueAtTime(0.12,t+0.05); g.gain.exponentialRampToValueAtTime(0.0001,t+0.35);
+      o.connect(g); g.connect(sfxGain); o.start(t); o.stop(t+0.4);
+    } else if(kind==="rustle"){
+      const b = noiseBuffer(); const src = ctx.createBufferSource(); src.buffer=b;
+      const f = ctx.createBiquadFilter(); f.type="highpass"; f.frequency.value=2500;
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(0.09,t+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+0.25);
+      src.connect(f); f.connect(g); g.connect(sfxGain); src.start(t); src.stop(t+0.3);
+    } else if(kind==="gear"){
+      for(let i=0;i<3;i++){
+        const o = ctx.createOscillator(); o.type="square"; o.frequency.value = 700+i*220;
+        const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t+i*0.04); g.gain.linearRampToValueAtTime(0.05, t+i*0.04+0.01); g.gain.exponentialRampToValueAtTime(0.0001, t+i*0.04+0.09);
+        o.connect(g); g.connect(sfxGain); o.start(t+i*0.04); o.stop(t+i*0.04+0.1);
+      }
+    } else if(kind==="chime"){
+      [0,4,7].forEach((semi,i)=>{
+        const o = ctx.createOscillator(); o.type="sine"; o.frequency.value = 523.25*Math.pow(2,semi/12);
+        const g = ctx.createGain(); g.gain.setValueAtTime(0.0001,t+i*0.06); g.gain.linearRampToValueAtTime(0.1,t+i*0.06+0.03); g.gain.exponentialRampToValueAtTime(0.0001,t+i*0.06+0.9);
+        o.connect(g); g.connect(sfxGain); o.start(t+i*0.06); o.stop(t+i*0.06+1);
+      });
+    }
+  }
+  function setVolumes(v){
+    ensureCtx();
+    master.gain.value = v.master/100;
+    windGain.gain.value = v.wind/100 * 0.8;
+    musicGain.gain.value = v.music/100 * 0.9;
+    sfxGain.gain.value = v.sfx/100;
+  }
+  function unlock(){ ensureCtx(); if(ctx.state==="suspended") ctx.resume(); }
+  return { unlock, sfx, setVolumes, setPeril };
+})();
+
+/* =====================================================================
+   MAP GENERATION (axial hex grid)
+===================================================================== */
+const HEX_SIZE = 34;
+function axialToPixel(q,r){
+  const x = HEX_SIZE * Math.sqrt(3) * (q + r/2);
+  const y = HEX_SIZE * 1.5 * r;
+  return {x,y};
+}
+function cubeDistance(q1,r1,q2,r2){
+  const x1=q1, z1=r1, y1=-x1-z1;
+  const x2=q2, z2=r2, y2=-x2-z2;
+  return Math.max(Math.abs(x1-x2), Math.abs(y1-y2), Math.abs(z1-z2));
+}
+function hexNeighbors(q,r){
+  return [[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]].map(([dq,dr])=>[q+dq,r+dr]);
+}
+const MAP_RADIUS = 6;
+function generateMap(rng){
+  const tiles = new Map();
+  for(let q=-MAP_RADIUS; q<=MAP_RADIUS; q++){
+    for(let r=-MAP_RADIUS; r<=MAP_RADIUS; r++){
+      if(cubeDistance(0,0,q,r) > MAP_RADIUS) continue;
+      const dist = cubeDistance(0,0,q,r);
+      let type;
+      if(dist===0){ type="home"; }
+      else {
+        type = weightedPick(rng, [
+          ["open", 46],
+          ["thermal", 14],
+          ["storm", 14],
+          ["tower", 11],
+          ["atoll", 9],
+          ["anomaly", 6]
+        ]);
+      }
+      tiles.set(q+","+r, {q,r,type,discovered: dist<=1, visited: dist===0, eventDone:false});
+    }
+  }
+  return tiles;
+}
+
+/* =====================================================================
+   GAME STATE
+===================================================================== */
+let G = null; // current game state
+let uiRng = Math.random;
+
+function newGameState(profileName){
+  const seed = Date.now() % 2147483647;
+  const rng = mulberry32(seed);
+  const codex = ls_get(CODEX_KEY, {unlocked:[]});
+  const perkEffects = {liftGasMax:0, navSkill:0, stormSeverity:0, salvage:0, engSkill:0, foodMax:0, socSkill:0, hullMax:0, botSkill:0, fuelMax:0};
+  codex.unlocked.forEach(id=>{
+    const e = CODEX_ENTRIES.find(c=>c.id===id);
+    if(e && e.effect){ Object.keys(e.effect).forEach(k=>{ perkEffects[k]=(perkEffects[k]||0)+e.effect[k]; }); }
+  });
+
+  const crew = CREW_TEMPLATES.map((tmpl,i)=>{
+    const trait = TRAITS[Math.floor(rng()*TRAITS.length)];
+    const baseSkill = randInt(rng,3,6);
+    const skillBonusKey = tmpl.skill+"Skill";
+    return {
+      id:"crew"+i, name: pick(rng, tmpl.names), role: tmpl.role, skillKey: tmpl.skill,
+      skill: baseSkill + (perkEffects[skillBonusKey]||0),
+      trait, morale:75, fatigue:10, hunger:10, alive:true
+    };
+  });
+
+  const state = {
+    seed, profileName: profileName||"Unnamed Expedition",
+    createdAt: Date.now(),
+    rngCounter:0,
+    day:1, phase:0, // 0 dawn 1 midday 2 twilight 3 night
+    weather:{type:"clear", severity:0},
+    resources:{
+      fuel:20, fuelMax:20+(perkEffects.fuelMax||0),
+      liftGas:16, liftGasMax:16+(perkEffects.liftGasMax||0),
+      hull:100, hullMax:100+(perkEffects.hullMax||0),
+      food:14, foodMax:14+(perkEffects.foodMax||0),
+      salvage:2+(perkEffects.salvage||0)
+    },
+    crew,
+    ship:{ q:0, r:0, upgrades:[], hullDamageReduction:0, foodPerDay:0, fuelEfficiency:1, stormResist:0 },
+    map: null,
+    codexUnlockedThisRun:[],
+    stats:{ islandsCharted:0, eventsResolved:0, crisesResolved:0, fuelHistory:[], startDay:1 },
+    log:[],
+    runState:"active"
+  };
+  state.resources.fuel = state.resources.fuelMax;
+  state.resources.liftGas = state.resources.liftGasMax;
+  state.resources.food = state.resources.foodMax;
+  state.map = Array.from(generateMap(rng).entries());
+  return state;
+}
+
+function mapAsObject(state){
+  const m = new Map(state.map);
+  return m;
+}
+function saveMapFromObject(state, m){
+  state.map = Array.from(m.entries());
+}
+
+function addLog(text){
+  G.log.unshift({day:G.day, text});
+  if(G.log.length>60) G.log.pop();
+  renderLog();
+}
+
+/* =====================================================================
+   PERSISTENCE
+===================================================================== */
+function autosave(){
+  if(!G) return;
+  const all = ls_get(SAVE_KEY, {});
+  all[G.profileName+"::"+G.seed] = G;
+  ls_set(SAVE_KEY, all);
+}
+function listProfiles(){
+  const all = ls_get(SAVE_KEY, {});
+  return Object.keys(all).map(k=>all[k]).sort((a,b)=>b.createdAt-a.createdAt);
+}
+function deleteProfile(key){
+  const all = ls_get(SAVE_KEY, {});
+  delete all[key];
+  ls_set(SAVE_KEY, all);
+}
+
+/* =====================================================================
+   RENDERING
+===================================================================== */
+const hexCanvas = document.getElementById("hexcanvas");
+const fxCanvas = document.getElementById("fxcanvas");
+const hctx = hexCanvas.getContext("2d");
+const fctx = fxCanvas.getContext("2d");
+
+function resizeCanvases(){
+  const area = document.querySelector(".map-area");
+  const w = area.clientWidth, h = area.clientHeight;
+  [hexCanvas, fxCanvas].forEach(c=>{ c.width=w; c.height=h; });
+  drawMap();
+}
+window.addEventListener("resize", resizeCanvases);
+
+const TILE_COLORS = {
+  home:"#e8b96a", open:"#3a4560", thermal:"#4a6a5a", storm:"#4a3a55",
+  tower:"#6a5a3a", atoll:"#3a5a6a", anomaly:"#5a3a6a"
+};
+const TILE_ICONS = {
+  home:"⌂", open:"", thermal:"↟", storm:"≋", tower:"🗼", atoll:"⚓", anomaly:"✷"
+};
+
+let hoveredTile = null;
+
+function drawHex(ctx, cx, cy, size, fill, stroke, lineWidth){
+  ctx.beginPath();
+  for(let i=0;i<6;i++){
+    const angle = Math.PI/180 * (60*i - 30);
+    const x = cx + size*Math.cos(angle);
+    const y = cy + size*Math.sin(angle);
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.closePath();
+  if(fill){ ctx.fillStyle=fill; ctx.fill(); }
+  if(stroke){ ctx.lineWidth=lineWidth||1; ctx.strokeStyle=stroke; ctx.stroke(); }
+}
+
+function drawMap(){
+  if(!G) return;
+  const w = hexCanvas.width, h = hexCanvas.height;
+  hctx.clearRect(0,0,w,h);
+  const m = mapAsObject(G);
+  const shipPix = axialToPixel(G.ship.q, G.ship.r);
+  const originX = w/2 - shipPix.x;
+  const originY = h/2 - shipPix.y;
+
+  m.forEach(tile=>{
+    const p = axialToPixel(tile.q, tile.r);
+    const cx = p.x+originX, cy = p.y+originY;
+    if(cx< -50||cx>w+50||cy<-50||cy>h+50) return;
+    if(!tile.discovered){
+      drawHex(hctx, cx, cy, HEX_SIZE-2, "rgba(10,12,20,0.75)", "rgba(255,255,255,0.03)", 1);
+      return;
+    }
+    const isShip = tile.q===G.ship.q && tile.r===G.ship.r;
+    const isAdjacent = cubeDistance(tile.q,tile.r,G.ship.q,G.ship.r)===1;
+    let fill = TILE_COLORS[tile.type]||"#333";
+    if(!tile.visited) fill = shadeColor(fill, -18);
+    drawHex(hctx, cx, cy, HEX_SIZE-2, fill, isShip? "#e8b96a": (isAdjacent? "rgba(232,185,106,0.6)":"rgba(255,255,255,0.08)"), isShip?2.5:1);
+    if(tile.eventDone && (tile.type==="tower"||tile.type==="atoll"||tile.type==="anomaly")){
+      hctx.globalAlpha=0.35;
+    }
+    if(TILE_ICONS[tile.type]){
+      hctx.globalAlpha=1;
+      hctx.fillStyle="rgba(255,255,255,0.85)";
+      hctx.font="15px serif";
+      hctx.textAlign="center"; hctx.textBaseline="middle";
+      hctx.fillText(TILE_ICONS[tile.type], cx, cy+1);
+    }
+    hctx.globalAlpha=1;
+    if(isShip){
+      hctx.fillStyle="#241708";
+      hctx.beginPath(); hctx.arc(cx,cy-2,5,0,Math.PI*2); hctx.fill();
+      hctx.fillStyle="#e8b96a";
+      hctx.beginPath(); hctx.arc(cx,cy-2,3,0,Math.PI*2); hctx.fill();
+    }
+  });
+}
+function shadeColor(hex, percent){
+  const num = parseInt(hex.replace("#",""),16);
+  let r=(num>>16), g=(num>>8&0x00FF), b=(num&0x0000FF);
+  r = clamp(Math.round(r+(percent/100)*255),0,255);
+  g = clamp(Math.round(g+(percent/100)*255),0,255);
+  b = clamp(Math.round(b+(percent/100)*255),0,255);
+  return "rgb("+r+","+g+","+b+")";
+}
+
+// Dust motes ambient animation
+let motes = [];
+function initMotes(){
+  motes = [];
+  for(let i=0;i<26;i++){
+    motes.push({x:Math.random()*fxCanvas.width, y:Math.random()*fxCanvas.height, r:Math.random()*1.6+0.4,
+      vx:(Math.random()-0.5)*0.15, vy:-Math.random()*0.12-0.02, a:Math.random()*0.5+0.1});
+  }
+}
+function animateMotes(){
+  if(document.body.getAttribute("data-reduced-motion")==="true"){ requestAnimationFrame(animateMotes); return; }
+  fctx.clearRect(0,0,fxCanvas.width, fxCanvas.height);
+  motes.forEach(m=>{
+    m.x+=m.vx; m.y+=m.vy;
+    if(m.y<-5) m.y=fxCanvas.height+5;
+    if(m.x<-5) m.x=fxCanvas.width+5;
+    if(m.x>fxCanvas.width+5) m.x=-5;
+    fctx.beginPath();
+    fctx.fillStyle = "rgba(232,185,106,"+m.a+")";
+    fctx.arc(m.x,m.y,m.r,0,Math.PI*2);
+    fctx.fill();
+  });
+  requestAnimationFrame(animateMotes);
+}
+
+/* =====================================================================
+   HUD RENDERING
+===================================================================== */
+const PHASE_NAMES = ["Dawn","Midday","Twilight","Night"];
+const PHASE_CLASS = ["dawn","midday","twilight","night"];
+
+function renderHUD(){
+  const r = G.resources;
+  setBar("hud-fuel-bar","hud-fuel-val", r.fuel, r.fuelMax);
+  setBar("hud-lift-bar","hud-lift-val", r.liftGas, r.liftGasMax);
+  setBar("hud-hull-bar","hud-hull-val", r.hull, r.hullMax);
+  setBar("hud-food-bar","hud-food-val", r.food, r.foodMax);
+  document.getElementById("hud-salvage-val").textContent = r.salvage;
+  document.getElementById("hud-day").textContent = G.day;
+  document.getElementById("hud-phase").textContent = PHASE_NAMES[G.phase];
+  const tint = document.getElementById("day-tint");
+  tint.className = "day-tint-layer "+PHASE_CLASS[G.phase];
+  const weatherEl = document.getElementById("weather-overlay");
+  weatherEl.className = "weather-overlay "+(G.weather.type==="storm"?"storm":(G.weather.type==="rain"?"rain":""));
+  Audio_.setPeril(r.hull < r.hullMax*0.3 || G.weather.type==="storm");
+}
+function setBar(barId, valId, val, max){
+  const pct = clamp((val/max)*100,0,100);
+  document.getElementById(barId).style.width = pct+"%";
+  document.getElementById(valId).textContent = Math.round(val)+"/"+Math.round(max);
+}
+
+function renderCrew(){
+  const list = document.getElementById("crew-list");
+  list.innerHTML = "";
+  G.crew.forEach(c=>{
+    const div = document.createElement("div");
+    div.className = "crew-card"+(c.alive? "":" dead");
+    div.innerHTML = `
+      <div class="ctop"><span class="cname">${c.name}</span><span class="crole">${c.role}</span></div>
+      <div class="ctrait" title="${c.trait.desc}">${c.alive? c.trait.name : "Lost to the sky"}</div>
+      ${c.alive? `
+      <div class="mini-bar-row"><span class="mlabel">Morale</span><div class="mini-bar morale"><div style="width:${clamp(c.morale,0,100)}%"></div></div></div>
+      <div class="mini-bar-row"><span class="mlabel">Fatigue</span><div class="mini-bar fatigue"><div style="width:${clamp(c.fatigue,0,100)}%"></div></div></div>
+      <div class="mini-bar-row"><span class="mlabel">Hunger</span><div class="mini-bar hunger"><div style="width:${clamp(c.hunger,0,100)}%"></div></div></div>
+      <div style="font-size:0.68rem;color:var(--parchment-dark);margin-top:0.3rem;">Skill (${c.skillKey}): ${c.skill}</div>
+      `:""}
+    `;
+    div.addEventListener("mouseenter",(e)=>showTooltip(e, c.trait.name, c.trait.desc));
+    div.addEventListener("mousemove", moveTooltip);
+    div.addEventListener("mouseleave", hideTooltip);
+    list.appendChild(div);
+  });
+}
+
+function renderLog(){
+  const feed = document.getElementById("log-feed");
+  const side = document.getElementById("side-log");
+  feed.innerHTML = G.log.slice(0,4).map(e=>`<div class="entry">Day ${e.day} — ${e.text}</div>`).reverse().join("");
+  feed.scrollTop = feed.scrollHeight;
+  side.innerHTML = G.log.map(e=>`<div style="margin-bottom:0.35rem;">Day ${e.day}: ${e.text}</div>`).join("");
+}
+
+function renderAll(){
+  drawMap(); renderHUD(); renderCrew(); renderLog();
+}
+
+/* =====================================================================
+   TOOLTIP
+===================================================================== */
+const tooltipEl = document.getElementById("tooltip");
+function showTooltip(e, title, text){
+  tooltipEl.innerHTML = `<div class="ttitle">${title}</div><div>${text}</div>`;
+  tooltipEl.classList.add("show");
+  moveTooltip(e);
+}
+function moveTooltip(e){
+  tooltipEl.style.left = (e.clientX+14)+"px";
+  tooltipEl.style.top = (e.clientY+10)+"px";
+}
+function hideTooltip(){ tooltipEl.classList.remove("show"); }
+
+/* =====================================================================
+   CORE GAME LOGIC
+===================================================================== */
+function rng(){ G.rngCounter++; return mulberry32(G.seed + G.rngCounter*7919)(); }
+
+function applyTraitMod(crewMember, kind){
+  return crewMember.trait[kind]||0;
+}
+
+function tickCrewDaily(){
+  G.crew.forEach(c=>{
+    if(!c.alive) return;
+    let fatigueGain = 6 + applyTraitMod(c,"fatigueMod");
+    let hungerGain = 8 + applyTraitMod(c,"hungerRateMod");
+    c.fatigue = clamp(c.fatigue+fatigueGain, 0, 100);
+    c.hunger = clamp(c.hunger+hungerGain, 0, 100);
+    if(c.fatigue>=85) c.morale = clamp(c.morale-4,0,100);
+    if(c.hunger>=85) c.morale = clamp(c.morale-6,0,100);
+  });
+  // consume food
+  const consume = G.crew.filter(c=>c.alive).length + G.crew.reduce((s,c)=>s+(c.alive?applyTraitMod(c,"foodConsumeMod"):0),0);
+  G.resources.food = clamp(G.resources.food - Math.max(1,consume) + (G.ship.foodPerDay||0), 0, G.resources.foodMax);
+  if(G.resources.food<=0){
+    G.crew.forEach(c=>{ if(c.alive) c.hunger = clamp(c.hunger+10,0,100); });
+    addLog("The larder runs empty. The crew grows hungrier.");
+  }
+  G.crew.forEach(c=>{
+    if(c.alive && c.hunger>=100 && rng()<0.15){
+      addLog(c.name+" succumbs to exhaustion and starvation. A grim day.");
+      c.alive = false;
+      G.crew.forEach(o=>{ if(o.alive) o.morale = clamp(o.morale-15,0,100); });
+    }
+  });
+  G.stats.fuelHistory.push({day:G.day, fuel:G.resources.fuel});
+  checkCrises();
+  checkGameOver();
+}
+
+function advancePhase(){
+  G.phase = (G.phase+1)%4;
+  if(G.phase===0){
+    G.day++;
+    tickCrewDaily();
+    rollWeather();
+  }
+}
+
+function rollWeather(){
+  const stormChance = 0.22 - (G.ship.stormResist*0.04);
+  if(rng() < Math.max(0.05,stormChance)){
+    G.weather = {type:"storm", severity: randInt(rng,1,3)};
+  } else if(rng()<0.3){
+    G.weather = {type:"rain", severity:1};
+  } else {
+    G.weather = {type:"clear", severity:0};
+  }
+}
+
+function checkCrises(){
+  G.crew.forEach(c=>{
+    if(c.alive && c.morale<=25 && !c._crisisCooldown){
+      c._crisisCooldown = true;
+      triggerCrisis(c);
+    }
+    if(c._crisisCooldown && c.morale>40) c._crisisCooldown=false;
+  });
+}
+
+function checkGameOver(){
+  const aliveCrew = G.crew.filter(c=>c.alive).length;
+  if(aliveCrew===0){ endRun("lost", "The crew is lost. The sky claims the ship."); return; }
+  if(G.resources.hull<=0){ endRun("lost", "Hull integrity fails. The airship breaks apart among the clouds."); return; }
+  if(G.resources.fuel<=0 && G.resources.liftGas<=0){ endRun("lost", "Stranded with no fuel or lift gas, the ship drifts forever into the fog."); return; }
+  if(G.stats.islandsCharted>=8){ endRun("won", "Eight landmarks charted. The Last Cartographer's survey is complete — you turn the ship toward home a legend."); return; }
+}
+
+function reachedHome(){ return G.ship.q===0 && G.ship.r===0; }
+
+/* -------------------- MOVEMENT -------------------- */
+function canMoveTo(tile){
+  return tile && tile.discovered && cubeDistance(tile.q,tile.r,G.ship.q,G.ship.r)===1;
+}
+function moveShipTo(tile){
+  const m = mapAsObject(G);
+  const fuelCost = Math.max(1, Math.round((1 + G.weather.severity*0.5) * (1/(G.ship.fuelEfficiency||1))));
+  if(G.resources.fuel < fuelCost){
+    addLog("Not enough fuel to make the journey.");
+    return;
+  }
+  Audio_.sfx("gear");
+  G.resources.fuel = clamp(G.resources.fuel - fuelCost, 0, G.resources.fuelMax);
+  G.resources.liftGas = clamp(G.resources.liftGas - 1, 0, G.resources.liftGasMax);
+  G.ship.q = tile.q; G.ship.r = tile.r;
+
+  // hull risk
+  let dmgChance = 0.06 + (tile.type==="storm"? 0.22:0) + (G.weather.type==="storm"? 0.14*G.weather.severity: 0);
+  dmgChance -= (G.ship.hullDamageReduction||0);
+  const engineer = G.crew.find(c=>c.role==="Engineer");
+  if(engineer && engineer.alive) dmgChance -= applyTraitMod(engineer,"hullDamageMod");
+  dmgChance = clamp(dmgChance,0.01,0.9);
+  if(rng()<dmgChance){
+    const dmg = randInt(rng,4,14) + (tile.type==="storm"?6:0);
+    G.resources.hull = clamp(G.resources.hull - dmg, 0, G.resources.hullMax);
+    addLog("Turbulence rattles the hull. Structural damage sustained ("+dmg+").");
+  }
+
+  // reveal fog
+  const visionRadius = 1 + (G.crew.some(c=>c.alive && c.trait.visionMod) ? 1:0);
+  hexNeighbors(tile.q,tile.r).forEach(([nq,nr])=>{
+    const key = nq+","+nr;
+    if(m.has(key)) m.get(key).discovered = true;
+    if(visionRadius>1){
+      hexNeighbors(nq,nr).forEach(([nq2,nr2])=>{
+        const k2 = nq2+","+nr2;
+        if(m.has(k2)) m.get(k2).discovered = true;
+      });
+    }
+  });
+  tile.discovered = true;
+  const wasVisited = tile.visited;
+  tile.visited = true;
+  saveMapFromObject(G, m);
+
+  advancePhase();
+  renderAll();
+  autosave();
+
+  if(!wasVisited && (tile.type==="tower"||tile.type==="atoll"||tile.type==="anomaly") && !tile.eventDone){
+    G.stats.islandsCharted++;
+    openEventForTile(tile);
+  } else if(tile.type==="thermal"){
+    G.resources.fuel = clamp(G.resources.fuel+3, 0, G.resources.fuelMax);
+    addLog("A calm thermal updraft replenishes some fuel.");
+  } else if(tile.type==="home" && wasVisited===false){
+    addLog("You return briefly to the airbase.");
+  }
+  checkGameOver();
+}
+
+/* -------------------- EVENTS -------------------- */
+let currentEventTile = null;
+function openEventForTile(tile){
+  const pool = EVENTS[tile.type];
+  if(!pool || pool.length===0) return;
+  const startEvents = pool.filter(e=>!e.id.endsWith("_2") && e.id.indexOf("_open")===-1);
+  const ev = pick(rng===undefined? Math.random: rng, startEvents.length? startEvents: pool);
+  currentEventTile = tile;
+  showEvent(ev.id);
+}
+function findEvent(id){
+  for(const key in EVENTS){ const found = EVENTS[key].find(e=>e.id===id); if(found) return found; }
+  return null;
+}
+function showEvent(id){
+  const ev = findEvent(id);
+  if(!ev) return;
+  document.getElementById("event-tag").textContent = ev.tag||"Expedition Event";
+  document.getElementById("event-title").textContent = ev.title;
+  document.getElementById("event-body").innerHTML = "<p>"+ev.text+"</p>";
+  const choicesEl = document.getElementById("event-choices");
+  choicesEl.innerHTML = "";
+  ev.choices.forEach(choice=>{
+    const btn = document.createElement("button");
+    btn.className="choice-btn";
+    const skillLabel = choice.skill? `<span class="csk">Skill check: ${choice.skill.toUpperCase()} (DC ${choice.dc})</span>`: "";
+    btn.innerHTML = choice.label + skillLabel;
+    btn.addEventListener("click", ()=>resolveChoice(ev, choice));
+    choicesEl.appendChild(btn);
+  });
+  openModal("modal-event");
+}
+function resolveChoice(ev, choice){
+  Audio_.sfx("rustle");
+  let outcome;
+  if(choice.skill){
+    const bestCrew = G.crew.filter(c=>c.alive && c.skillKey===choice.skill).sort((a,b)=>b.skill-a.skill)[0]
+      || G.crew.filter(c=>c.alive).sort((a,b)=>b.skill-a.skill)[0];
+    const skillVal = bestCrew? bestCrew.skill: 3;
+    const nightBonus = (G.phase===3 && bestCrew && bestCrew.trait.nightSkillMod)? bestCrew.trait.nightSkillMod: 0;
+    const roll = randInt(rng,1,10) + skillVal + nightBonus;
+    outcome = roll >= choice.dc ? choice.success : (choice.fail||choice.success);
+  } else {
+    outcome = choice.success;
+  }
+  applyEffects(outcome.effects||{});
+  document.getElementById("event-body").innerHTML = "<p>"+outcome.text+"</p>";
+  document.getElementById("event-choices").innerHTML = "";
+  const closeRow = document.createElement("div");
+  closeRow.style.padding="0 1.4rem 1.3rem 1.4rem"; closeRow.style.textAlign="right";
+  const btn = document.createElement("button");
+  btn.className="wax-btn";
+  if(outcome.next){
+    btn.textContent="Continue";
+    btn.addEventListener("click", ()=>{ closeModal("modal-event"); showEvent(outcome.next); });
+  } else {
+    btn.textContent="Close";
+    btn.addEventListener("click", ()=>{
+      closeModal("modal-event");
+      if(currentEventTile){ currentEventTile.eventDone = true; saveMapFromObject(G, mapAsObject(G)); }
+      G.stats.eventsResolved++;
+      addLog(ev.title+": "+outcome.text.slice(0,70)+(outcome.text.length>70?"…":""));
+      renderAll(); autosave(); checkGameOver();
+    });
+  }
+  document.getElementById("event-choices").appendChild(closeRow);
+  closeRow.appendChild(btn);
+}
+function applyEffects(fx){
+  const r = G.resources;
+  if(fx.fuel) r.fuel = clamp(r.fuel+fx.fuel,0,r.fuelMax);
+  if(fx.fuelDelta) r.fuel = clamp(r.fuel+fx.fuelDelta,0,r.fuelMax);
+  if(fx.liftGas) r.liftGas = clamp(r.liftGas+fx.liftGas,0,r.liftGasMax);
+  if(fx.hull) r.hull = clamp(r.hull+fx.hull,0,r.hullMax);
+  if(fx.food) r.food = clamp(r.food+fx.food,0,r.foodMax);
+  if(fx.foodDelta) r.food = clamp(r.food+fx.foodDelta,0,r.foodMax);
+  if(fx.salvage) r.salvage = Math.max(0,r.salvage+fx.salvage);
+  if(fx.salvageDelta) r.salvage = Math.max(0,r.salvage+fx.salvageDelta);
+  if(fx.moraleAll){ G.crew.forEach(c=>{ if(c.alive){ const dampen=c.trait.moraleDampen||1; c.morale = clamp(c.morale+fx.moraleAll*dampen,0,100);} }); }
+  if(fx.reveal){
+    const m = mapAsObject(G);
+    let count=0;
+    m.forEach(t=>{ if(!t.discovered && count<fx.reveal*3){ if(rng()<0.3){ t.discovered=true; count++; } } });
+    saveMapFromObject(G,m);
+  }
+  if(fx.codex){
+    const codex = ls_get(CODEX_KEY, {unlocked:[]});
+    if(!codex.unlocked.includes(fx.codex)){
+      codex.unlocked.push(fx.codex);
+      ls_set(CODEX_KEY, codex);
+      G.codexUnlockedThisRun.push(fx.codex);
+      const entry = CODEX_ENTRIES.find(c=>c.id===fx.codex);
+      if(entry) addLog("Codex entry unlocked: "+entry.name);
+    }
+  }
+}
+
+/* -------------------- CRISES -------------------- */
+let currentCrisisCrew = null;
+function triggerCrisis(crewMember){
+  currentCrisisCrew = crewMember;
+  const crisis = pick(rng===undefined?Math.random:rng, CRISES);
+  document.getElementById("crisis-title").textContent = crisis.title;
+  document.getElementById("crisis-body").innerHTML = "<p>"+crisis.text.replace("{name}", crewMember.name)+"</p>";
+  const choicesEl = document.getElementById("crisis-choices");
+  choicesEl.innerHTML = "";
+  crisis.choices.forEach(choice=>{
+    const btn = document.createElement("button");
+    btn.className="choice-btn";
+    btn.innerHTML = choice.label + (choice.skill? `<span class="csk">Skill check: ${choice.skill.toUpperCase()} (DC ${choice.dc})</span>`:"");
+    btn.addEventListener("click", ()=>resolveCrisis(choice));
+    choicesEl.appendChild(btn);
+  });
+  openModal("modal-crisis");
+}
+function resolveCrisis(choice){
+  Audio_.sfx("chime");
+  let fx = choice.effects;
+  if(choice.skill){
+    const roll = randInt(rng,1,10) + (currentCrisisCrew.skill||3);
+    fx = roll>=choice.dc ? (choice.success? choice.success.effects: choice.effects) : (choice.fail? choice.fail.effects: choice.effects);
+  }
+  if(fx.moraleTarget) currentCrisisCrew.morale = clamp(currentCrisisCrew.morale+fx.moraleTarget,0,100);
+  if(fx.fatigueTarget) currentCrisisCrew.fatigue = clamp(currentCrisisCrew.fatigue+fx.fatigueTarget,0,100);
+  if(fx.moraleAll) G.crew.forEach(c=>{ if(c.alive) c.morale = clamp(c.morale+fx.moraleAll,0,100); });
+  if(fx.foodDelta) G.resources.food = clamp(G.resources.food+fx.foodDelta,0,G.resources.foodMax);
+  G.stats.crisesResolved++;
+  addLog("Crew crisis resolved for "+currentCrisisCrew.name+".");
+  closeModal("modal-crisis");
+  renderAll(); autosave();
+}
+
+/* -------------------- REST -------------------- */
+function restDay(){
+  Audio_.sfx("drawer");
+  G.crew.forEach(c=>{
+    if(!c.alive) return;
+    let recover = 14 + applyTraitMod(c,"restMoraleMod");
+    c.fatigue = clamp(c.fatigue-18,0,100);
+    c.morale = clamp(c.morale+recover*0.4,0,100);
+  });
+  G.phase=0;
+  G.day++;
+  tickCrewDaily();
+  rollWeather();
+  addLog("The crew rests. Fatigue eases, spirits lift slightly.");
+  renderAll(); autosave();
+}
+
+/* -------------------- RETREAT / END -------------------- */
+function attemptRetreat(){
+  if(reachedHome()){
+    endRun("won", "You dock safely at the airbase, expedition charts in hand.");
+  } else {
+    addLog("The Navigator plots a course home. Keep moving toward the airbase (⌂) to complete your return.");
+    closeModal("modal-event");
+  }
+}
+function endRun(result, text){
+  if(G.runState!=="active") return;
+  G.runState = result;
+  addLog(text);
+  autosave();
+  showLedger(result, text);
+}
+
+/* =====================================================================
+   MODALS: generic open/close
+===================================================================== */
+function openModal(id){ document.getElementById(id).classList.add("show"); }
+function closeModal(id){ document.getElementById(id).classList.remove("show"); }
+document.querySelectorAll("[data-close]").forEach(btn=>{
+  btn.addEventListener("click", ()=>closeModal(btn.getAttribute("data-close")));
+});
+
+/* -------------------- CODEX MODAL -------------------- */
+function renderCodexModal(){
+  const codex = ls_get(CODEX_KEY, {unlocked:[]});
+  const grid = document.getElementById("codex-grid");
+  grid.innerHTML = "";
+  CODEX_ENTRIES.forEach(entry=>{
+    const unlocked = codex.unlocked.includes(entry.id);
+    const div = document.createElement("div");
+    div.className = "codex-entry"+(unlocked? "":" locked");
+    div.innerHTML = `<div class="cename">${unlocked? entry.name: "???"}</div>
+      <div class="cecat">${entry.cat}</div>
+      <div class="cedesc">${unlocked? entry.desc: "Not yet discovered."}</div>
+      ${unlocked? `<div class="ceperk">Perk: ${entry.perk}</div>`:""}`;
+    grid.appendChild(div);
+  });
+}
+
+/* -------------------- UPGRADES MODAL -------------------- */
+function renderUpgradesModal(){
+  const list = document.getElementById("upgrade-list");
+  list.innerHTML = "";
+  UPGRADES.forEach(u=>{
+    const bought = G.ship.upgrades.includes(u.id);
+    const row = document.createElement("div");
+    row.className = "upgrade-row"+(bought?" bought":"");
+    row.innerHTML = `<div class="upgrade-info"><div class="uname">${u.name}</div><div class="udesc">${u.desc}</div></div>`;
+    const btn = document.createElement("button");
+    btn.className="buy-btn";
+    if(bought){ btn.textContent="Installed"; btn.disabled=true; }
+    else{
+      btn.textContent = "Install ("+u.cost+" salvage)";
+      btn.disabled = G.resources.salvage < u.cost;
+      btn.addEventListener("click", ()=>{
+        if(G.resources.salvage>=u.cost){
+          G.resources.salvage -= u.cost;
+          G.ship.upgrades.push(u.id);
+          u.apply(G);
+          Audio_.sfx("gear");
+          addLog("Installed upgrade: "+u.name+".");
+          renderUpgradesModal(); renderHUD(); autosave();
+        }
+      });
+    }
+    row.appendChild(btn);
+    list.appendChild(row);
+  });
+}
+
+/* -------------------- LEDGER MODAL -------------------- */
+function showLedger(result, text){
+  document.getElementById("ledger-tag").textContent = result==="won"? "Expedition Successful": "Expedition Ended";
+  document.getElementById("ledger-title").textContent = text;
+  const statsEl = document.getElementById("ledger-stats");
+  const aliveCount = G.crew.filter(c=>c.alive).length;
+  statsEl.innerHTML = `
+    <div class="ledger-stat"><div class="lval">${G.day}</div><div class="llabel">Days Aloft</div></div>
+    <div class="ledger-stat"><div class="lval">${G.stats.islandsCharted}</div><div class="llabel">Islands Charted</div></div>
+    <div class="ledger-stat"><div class="lval">${aliveCount}/4</div><div class="llabel">Crew Survived</div></div>
+    <div class="ledger-stat"><div class="lval">${G.codexUnlockedThisRun.length}</div><div class="llabel">Codex Found</div></div>
+  `;
+  drawLedgerChart();
+  openModal("modal-ledger");
+}
+function drawLedgerChart(){
+  const canvas = document.getElementById("ledger-chart");
+  const ctx2 = canvas.getContext("2d");
+  const w = canvas.clientWidth || 500; canvas.width = w;
+  ctx2.clearRect(0,0,canvas.width,canvas.height);
+  const hist = G.stats.fuelHistory.length? G.stats.fuelHistory: [{day:1,fuel:G.resources.fuel}];
+  const maxFuel = Math.max(...hist.map(h=>h.fuel), 10);
+  const barW = Math.max(4, (canvas.width-20)/hist.length - 4);
+  ctx2.fillStyle = "#8b5a2b";
+  ctx2.font = "11px serif";
+  hist.forEach((h,i)=>{
+    const x = 10 + i*(barW+4);
+    const barH = (h.fuel/maxFuel) * (canvas.height-24);
+    ctx2.fillStyle = "rgba(139,90,43,0.75)";
+    ctx2.fillRect(x, canvas.height-barH-14, barW, barH);
+  });
+  ctx2.fillStyle="#4a3a24";
+  ctx2.fillText("Fuel reserves per day", 10, 14);
+}
+
+/* =====================================================================
+   INPUT: hex click handling
+===================================================================== */
+hexCanvas.addEventListener("click",(e)=>{
+  if(!G || G.runState!=="active") return;
+  const rect = hexCanvas.getBoundingClientRect();
+  const mx = e.clientX-rect.left, my = e.clientY-rect.top;
+  const m = mapAsObject(G);
+  const shipPix = axialToPixel(G.ship.q, G.ship.r);
+  const originX = hexCanvas.width/2 - shipPix.x;
+  const originY = hexCanvas.height/2 - shipPix.y;
+  let closest=null, closestDist=Infinity;
+  m.forEach(tile=>{
+    const p = axialToPixel(tile.q,tile.r);
+    const cx=p.x+originX, cy=p.y+originY;
+    const d = Math.hypot(cx-mx,cy-my);
+    if(d<closestDist){ closestDist=d; closest=tile; }
+  });
+  if(closest && closestDist < HEX_SIZE && canMoveTo(closest)){
+    moveShipTo(closest);
+  }
+});
+hexCanvas.addEventListener("mousemove",(e)=>{
+  if(!G) return;
+  const rect = hexCanvas.getBoundingClientRect();
+  const mx = e.clientX-rect.left, my = e.clientY-rect.top;
+  const m = mapAsObject(G);
+  const shipPix = axialToPixel(G.ship.q, G.ship.r);
+  const originX = hexCanvas.width/2 - shipPix.x;
+  const originY = hexCanvas.height/2 - shipPix.y;
+  let closest=null, closestDist=Infinity;
+  m.forEach(tile=>{
+    const p = axialToPixel(tile.q,tile.r);
+    const cx=p.x+originX, cy=p.y+originY;
+    const d = Math.hypot(cx-mx,cy-my);
+    if(d<closestDist){ closestDist=d; closest=tile; }
+  });
+  if(closest && closestDist<HEX_SIZE && closest.discovered){
+    const names = {home:"Airbase",open:"Open Sky",thermal:"Thermal Updraft",storm:"Dense Storm",tower:"Ruined Sky-Tower",atoll:"Trading Atoll",anomaly:"Mysterious Anomaly"};
+    const desc = {
+      home:"Your expedition's launch point.", open:"Clear skies, safe passage.",
+      thermal:"Rising warm air — replenishes fuel when crossed.",
+      storm:"Turbulent and dangerous. Risk of hull damage.",
+      tower:"An ancient ruin awaits exploration.",
+      atoll:"A floating trade settlement.",
+      anomaly:"Something strange lingers here."
+    };
+    showTooltip(e, names[closest.type], desc[closest.type] + (canMoveTo(closest)? "  (Click to travel)": ""));
+  } else {
+    hideTooltip();
+  }
+});
+hexCanvas.addEventListener("mouseleave", hideTooltip);
+
+/* =====================================================================
+   SETTINGS
+===================================================================== */
+function loadSettings(){
+  return ls_get(SETTINGS_KEY, {master:70,wind:55,music:60,sfx:70,contrast:false,motion:false,textSpeed:3});
+}
+function saveSettings(s){ ls_set(SETTINGS_KEY, s); }
+function applySettings(s){
+  document.body.setAttribute("data-contrast", s.contrast? "high":"normal");
+  document.body.setAttribute("data-reduced-motion", s.motion? "true":"false");
+  document.getElementById("vol-master").value = s.master;
+  document.getElementById("vol-wind").value = s.wind;
+  document.getElementById("vol-music").value = s.music;
+  document.getElementById("vol-sfx").value = s.sfx;
+  document.getElementById("text-speed").value = s.textSpeed;
+  document.getElementById("toggle-contrast").querySelector(".wax-seal").classList.toggle("off", !s.contrast);
+  document.getElementById("toggle-motion").querySelector(".wax-seal").classList.toggle("off", !s.motion);
+  Audio_.setVolumes(s);
+}
+let settingsState = loadSettings();
+applySettings(settingsState);
+["master","wind","music","sfx"].forEach(k=>{
+  document.getElementById("vol-"+k).addEventListener("input",(e)=>{
+    settingsState[k] = parseInt(e.target.value,10);
+    Audio_.setVolumes(settingsState);
+    saveSettings(settingsState);
+  });
+});
+document.getElementById("text-speed").addEventListener("input",(e)=>{
+  settingsState.textSpeed = parseInt(e.target.value,10);
+  saveSettings(settingsState);
+});
+document.getElementById("toggle-contrast").addEventListener("click",()=>{
+  settingsState.contrast = !settingsState.contrast;
+  applySettings(settingsState); saveSettings(settingsState);
+});
+document.getElementById("toggle-motion").addEventListener("click",()=>{
+  settingsState.motion = !settingsState.motion;
+  applySettings(settingsState); saveSettings(settingsState);
+});
+
+/* =====================================================================
+   NAVIGATION / SCREEN CONTROL
+===================================================================== */
+function showScreen(id){
+  document.querySelectorAll(".screen").forEach(s=>{
+    if(s.id===id){ s.style.display="flex"; s.classList.remove("hidden"); }
+    else { s.classList.add("hidden"); setTimeout(()=>{ if(s.classList.contains("hidden")) s.style.display="none"; }, 400); }
+  });
+}
+
+document.getElementById("btn-new-expedition").addEventListener("click", ()=>{
+  Audio_.unlock(); Audio_.sfx("chime");
+  const name = "Expedition "+ new Date().toLocaleDateString();
+  G = newGameState(name);
+  startGameScreen();
+});
+document.getElementById("btn-continue").addEventListener("click", ()=>{
+  Audio_.unlock();
+  renderProfileList();
+  showScreen("screen-profiles");
+});
+document.getElementById("btn-back-title").addEventListener("click", ()=> showScreen("screen-title"));
+document.getElementById("btn-codex-open").addEventListener("click", ()=>{ Audio_.unlock(); renderCodexModal(); openModal("modal-codex"); });
+document.getElementById("btn-settings-open").addEventListener("click", ()=>{ Audio_.unlock(); openModal("modal-settings"); });
+document.getElementById("btn-settings-game").addEventListener("click", ()=> openModal("modal-settings"));
+document.getElementById("btn-menu-game").addEventListener("click", ()=>{
+  if(confirm("Return to title screen? Your expedition is autosaved.")){
+    showScreen("screen-title");
+    document.getElementById("screen-game").style.display="none";
+  }
+});
+document.getElementById("btn-open-codex").addEventListener("click", ()=>{ renderCodexModal(); openModal("modal-codex"); });
+document.getElementById("btn-open-upgrades").addEventListener("click", ()=>{ renderUpgradesModal(); openModal("modal-upgrades"); });
+document.getElementById("btn-rest").addEventListener("click", restDay);
+document.getElementById("btn-retreat").addEventListener("click", attemptRetreat);
+document.getElementById("btn-ledger-continue").addEventListener("click", ()=>{
+  closeModal("modal-ledger");
+  showScreen("screen-title");
+  document.getElementById("screen-game").style.display="none";
+});
+
+function renderProfileList(){
+  const listEl = document.getElementById("profile-list");
+  const all = ls_get(SAVE_KEY, {});
+  const keys = Object.keys(all).sort((a,b)=>all[b].createdAt-all[a].createdAt);
+  listEl.innerHTML = "";
+  if(keys.length===0){ listEl.innerHTML = "<div style='color:var(--parchment-dark);font-size:0.9rem;'>No expeditions logged yet.</div>"; return; }
+  keys.forEach(key=>{
+    const s = all[key];
+    const div = document.createElement("div");
+    div.className="profile-card";
+    const alive = s.crew.filter(c=>c.alive).length;
+    div.innerHTML = `<div><div class="pname">${s.profileName}</div><div class="pmeta">Day ${s.day} · ${alive}/4 crew · ${s.runState==="active"?"In progress":s.runState}</div></div>
+      <div class="pdel">Delete</div>`;
+    div.querySelector(".pdel").addEventListener("click",(ev)=>{
+      ev.stopPropagation();
+      deleteProfile(key);
+      renderProfileList();
+    });
+    div.addEventListener("click", ()=>{
+      G = s;
+      startGameScreen();
+    });
+    listEl.appendChild(div);
+  });
+}
+
+function startGameScreen(){
+  document.getElementById("screen-game").style.display="flex";
+  showScreen("screen-game");
+  resizeCanvases();
+  initMotes();
+  rollWeather();
+  renderAll();
+  autosave();
+}
+
+/* boot */
+requestAnimationFrame(animateMotes);
+window.addEventListener("load", resizeCanvases);
+document.addEventListener("click", ()=>Audio_.unlock(), {once:true});
+
+})();
+</script>
+</body>
+</html>
